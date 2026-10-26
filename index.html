@@ -134,7 +134,7 @@ section{padding-block:clamp(56px,8vw,96px);position:relative}
 .fill{position:absolute;pointer-events:none;border-radius:2px;background:linear-gradient(90deg,var(--amber),var(--cyan));box-shadow:0 0 14px rgba(70,210,255,.6)}
 .vert .fill{background:linear-gradient(180deg,var(--amber),var(--cyan))}
 .train{position:absolute;left:0;top:0;width:0;height:0;transform-origin:0 0;z-index:3;pointer-events:none;will-change:transform}
-.tb{position:relative;display:flex;gap:2px;width:66px;height:14px;margin:-7px 0 0 -33px}
+.tb{position:relative;display:flex;width:30px;height:14px;margin:-7px 0 0 -15px}
 .car{flex:1;position:relative;background:var(--ink);border-radius:3px;box-shadow:0 0 10px rgba(70,210,255,.35)}
 .car::after{content:"";position:absolute;left:3px;right:4px;top:4px;height:4px;border-radius:1px;background:repeating-linear-gradient(90deg,#0A111E 0 4px,transparent 4px 6px)}
 .car.loco{flex:1.2;border-radius:3px 9px 9px 3px}
@@ -229,7 +229,7 @@ footer{padding-block:28px 40px;font-family:var(--mono);font-size:.75rem;color:va
 
 @media (max-width:860px){
   .hero .wrap{grid-template-columns:1fr}
-  .portrait{justify-self:start;max-width:300px;order:-1;margin-left:10px}
+  .portrait{justify-self:center;max-width:300px;order:-1;margin-inline:auto}
   .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .stat:nth-child(2){border-right:0}
   .stat:nth-child(-n+2){border-bottom:1px solid var(--rule)}
@@ -321,7 +321,7 @@ footer{padding-block:28px 40px;font-family:var(--mono);font-size:.75rem;color:va
   <div class="map" role="tablist" aria-label="Career stops" id="map">
     <div class="track" id="track"></div>
     <div class="fill" id="fill"></div>
-    <div class="train" id="train" aria-hidden="true"><div class="tb" id="tb"><span class="trail"></span><span class="car"></span><span class="car"></span><span class="car loco"></span><span class="beam"></span></div></div>
+    <div class="train" id="train" aria-hidden="true"><div class="tb" id="tb"><span class="trail"></span><span class="car loco"></span><span class="beam"></span></div></div>
   </div>
   <div class="detail" role="tabpanel" id="detail" aria-live="polite"></div>
 </section>
@@ -649,12 +649,12 @@ const btns=stops.map((s,i)=>{
   b.className="stop"+(s.hub?" hub":"");b.type="button";b.setAttribute("role","tab");b.id="stop-"+i;
   b.setAttribute("aria-controls","detail");
   b.innerHTML=(s.now?'<span class="now">NOW</span>':'')+'<span class="dot"></span><span class="code">'+s.code+'</span><span class="yr">'+s.yr+'</span>';
-  b.addEventListener("click",()=>{stopPlay();select(i,false)});
+  b.addEventListener("click",()=>{select(i,false);if(playing)schedule()});
   map.appendChild(b);return b;
 });
 map.addEventListener("keydown",e=>{
-  if(["ArrowRight","ArrowDown"].includes(e.key)){e.preventDefault();stopPlay();select(Math.min(cur+1,stops.length-1),true)}
-  if(["ArrowLeft","ArrowUp"].includes(e.key)){e.preventDefault();stopPlay();select(Math.max(cur-1,0),true)}
+  if(["ArrowRight","ArrowDown"].includes(e.key)){e.preventDefault();select(Math.min(cur+1,stops.length-1),true);if(playing)schedule()}
+  if(["ArrowLeft","ArrowUp"].includes(e.key)){e.preventDefault();select(Math.max(cur-1,0),true);if(playing)schedule()}
 });
 function esc(t){return t.replace(/&/g,"&amp;").replace(/</g,"&lt;")}
 function list(pts){return '<ul>'+pts.map(p=>'<li>'+esc(p)+'</li>').join("")+'</ul>'}
@@ -705,18 +705,18 @@ function select(i,focus){
   if(focus)btns[i].focus();
   detail.setAttribute("aria-labelledby","stop-"+i);
   detail.innerHTML='<div><p class="eyebrow">Stop '+(i+1)+' of '+stops.length+' · '+s.code+'</p><h3>'+esc(s.role)+'</h3><p class="org">'+esc(s.org)+'</p><p class="when">'+esc(s.when)+'<br>'+esc(s.where)+'</p><div class="nav2"><button class="btn" type="button" id="prev"'+(i===0?' disabled':'')+'>← Earlier</button><button class="btn" type="button" id="next"'+(i===stops.length-1?' disabled':'')+'>Later →</button></div></div>'+body(s);
-  $("#prev").onclick=()=>{stopPlay();select(Math.max(cur-1,0))};
-  $("#next").onclick=()=>{stopPlay();select(Math.min(cur+1,stops.length-1))};
+  $("#prev").onclick=()=>{select(Math.max(cur-1,0));if(playing)schedule()};
+  $("#next").onclick=()=>{select(Math.min(cur+1,stops.length-1));if(playing)schedule()};
   detail.classList.remove("flash");void detail.offsetWidth;if(!still)detail.classList.add("flash");
   moveTo(i);
 }
-let playing=false,hover=false;
+let playing=false;
 function dwell(i){return stops[i].groups?9000:4800}
 function schedule(){
   clearTimeout(timer);
   timer=setTimeout(function tick(){
     if(!playing)return;
-    if(hover||document.hidden){timer=setTimeout(tick,600);return}
+    if(document.hidden){timer=setTimeout(tick,600);return}
     select(cur>=stops.length-1?0:cur+1);schedule();
   },dwell(cur));
 }
@@ -730,8 +730,6 @@ function stopPlay(){
 }
 play.addEventListener("click",()=>{playing?stopPlay():startPlay(false)});
 const journey=document.getElementById("journey");
-journey.addEventListener("pointerenter",e=>{if(e.pointerType==="mouse")hover=true});
-journey.addEventListener("pointerleave",()=>{hover=false});
 if(!still){
   if("IntersectionObserver" in window){
     const jo=new IntersectionObserver(es=>{if(es[0].isIntersecting){jo.disconnect();startPlay(true)}},{threshold:.35});
